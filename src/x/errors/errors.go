@@ -23,6 +23,7 @@ package errors
 
 import (
 	"bytes"
+	stdctx "context"
 	"errors"
 	"fmt"
 )
@@ -128,6 +129,26 @@ func GetInnerInvalidParamsError(err error) error {
 		err = InnerError(err)
 	}
 	return nil
+}
+
+// IsTimeoutError checks if the error is or contains a context.Canceled / context.DeadlineExceeded
+func IsTimeoutError(err error) bool {
+	for err != nil {
+		if errors.Is(err, stdctx.Canceled) || errors.Is(err, stdctx.DeadlineExceeded) {
+			return true
+		}
+
+		if multiErr, ok := err.(MultiError); ok {
+			for _, e := range multiErr.Errors() {
+				if IsTimeoutError(e) {
+					return true
+				}
+			}
+		}
+
+		err = InnerError(err)
+	}
+	return false
 }
 
 type retryableError struct {
